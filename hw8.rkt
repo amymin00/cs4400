@@ -79,7 +79,7 @@ language that users actually see.
      (match sexpr
        [(list 'call fun (list args ...))
         (Call (parse-sexpr fun) (map parse-sexpr args))]
-       [else (error 'parse-sexpr "missing arguments to `call' in ~s"
+       [else (error 'parse-sexpr "bad `call' syntax in ~s"
                    sexpr)])]
     [(cons (or 'bind 'bind*) more) ; match on either symbol
      (match sexpr
@@ -324,7 +324,7 @@ language that users actually see.
       =error> "no bindings given to `bind*'")
 
 #|
-;; nullary functions test #1: test SHOULDN'T PASS
+;; nullary functions test #1: test SHOULDN'T PASSm
 ;; unary function given no arguments
 (test (run "{call {fun {x} {+ x 1}}}")
       => )
