@@ -327,10 +327,12 @@ language that users actually see.
 ;; unary function given no arguments - no expected result
 ;; any returned result means test didn't error
 (test (run "{call {fun {x} {+ x 1}}}"))
+
 ;; nullary functions test #2: test SHOULDN'T PASS
 ;; nullary function receives an argument
 (test (run "{call {fun {} 1} 2}")
       => 1)
+
 ;; nullary functions test #3
 ;; ensure dummy binding name doesn't get overridden
 (test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
@@ -338,9 +340,19 @@ language that users actually see.
 
 (test (run "{call {fun {} 1}}")
       => 1)
-(test (run "{with {x 5} {call {fun {} {* x 2}}}")
+(test (run "{with {x 5} {call {fun {} {* x 2}}}}")
       => 10)
+
+(test (run "{call {fun {x} x} 1}")
+      => 1)
+
+#|
+
+EDIT: this code did not pass: malformed with expression
 (test (run "{bind {{x 5} {y 0}}
               {call {fun {}
                       {with {y {* {+ x y} 2}}}}}}")
-      => )
+      => 2)
+|#
+
+(define minutes-spent 200)
