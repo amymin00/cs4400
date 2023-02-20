@@ -275,8 +275,10 @@ language that users actually see.
       =error> "arith-op: expected a number")
 (test (run "{call 1 1}")
       =error> "expects a function")
-#|(test (run "{call {fun {x} x}}") ;; 
+#|(test (run "{call {fun {x} x}}") ;; test changed with added nullary fun. feature
       =error> "missing arguments to `call'")|#
+(test (run "{call}")
+      =error> "bad `call' syntax")
 
 ;; test multiple-argument functions
 (test (run "{with {add {fun {x y} {+ x y}}} {call add 7 8}}")
@@ -324,15 +326,15 @@ language that users actually see.
       =error> "no bindings given to `bind*'")
 
 #|
-;; nullary functions test #1: test SHOULDN'T PASSm
+;; nullary functions test #1: test SHOULDN'T PASS
 ;; unary function given no arguments
 (test (run "{call {fun {x} {+ x 1}}}")
-      => )
+      => )|#
 ;; nullary functions test #2: test SHOULDN'T PASS
 ;; nullary function receives an argument
 (test (run "{call {fun {} 1} 2}")
       => 1)
 ;; nullary functions test #3: test SHOULDN'T PASS
 ;; ensure dummy binding name 
-(test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
+#|(test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
       => 3)|#
