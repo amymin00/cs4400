@@ -263,8 +263,8 @@ language that users actually see.
       =error> "bad `fun' syntax")
 (test (run "{call {fun {x} } 4}")
       =error> "bad `fun' syntax")
-#|(test (run "{fun {} 1}") ;; test changed with added nullary fun. feature
-      =error> "evaluation returned a non-number")|#
+(test (run "{fun {} 1}")
+      =error> "evaluation returned a non-number")
 (test (run "{with {y} }")
       =error> "bad `with' syntax")
 (test (run "{fun {x} {+ x x}}")
@@ -275,8 +275,6 @@ language that users actually see.
       =error> "arith-op: expected a number")
 (test (run "{call 1 1}")
       =error> "expects a function")
-#|(test (run "{call {fun {x} x}}") ;; test changed with added nullary fun. feature
-      =error> "missing arguments to `call'")|#
 (test (run "{call}")
       =error> "bad `call' syntax")
 
@@ -325,16 +323,24 @@ language that users actually see.
 (test (run "{bind* {} {+ 1 2}}")
       =error> "no bindings given to `bind*'")
 
-#|
 ;; nullary functions test #1: test SHOULDN'T PASS
-;; unary function given no arguments
-(test (run "{call {fun {x} {+ x 1}}}")
-      => )|#
+;; unary function given no arguments - no expected result
+;; any returned result means test didn't error
+(test (run "{call {fun {x} {+ x 1}}}"))
 ;; nullary functions test #2: test SHOULDN'T PASS
 ;; nullary function receives an argument
 (test (run "{call {fun {} 1} 2}")
       => 1)
-;; nullary functions test #3: test SHOULDN'T PASS
-;; ensure dummy binding name 
-#|(test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
-      => 3)|#
+;; nullary functions test #3
+;; ensure dummy binding name doesn't get overridden
+(test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
+      => 3)
+
+(test (run "{call {fun {} 1}}")
+      => 1)
+(test (run "{with {x 5} {call {fun {} {* x 2}}}")
+      => 10)
+(test (run "{bind {{x 5} {y 0}}
+              {call {fun {}
+                      {with {y {* {+ x y} 2}}}}}}")
+      => )
