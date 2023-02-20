@@ -77,7 +77,7 @@ language that users actually see.
     [(list '/ lhs rhs) (Div (parse-sexpr lhs) (parse-sexpr rhs))]
     [(cons 'call more)
      (match sexpr
-       [(list 'call fun (list args ...))
+       [(list 'call fun args ...)
         (Call (parse-sexpr fun) (map parse-sexpr args))]
        [else (error 'parse-sexpr "bad `call' syntax in ~s"
                    sexpr)])]
