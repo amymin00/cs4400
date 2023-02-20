@@ -325,16 +325,15 @@ language that users actually see.
 (test (run "{bind* {} {+ 1 2}}")
       =error> "no bindings given to `bind*'")
 
-#|
+
 ;; nullary functions test #1: test SHOULDN'T PASS
 ;; unary function given no arguments
-(test (run "{call {fun {x} {+ x 1}}}")
-      => )|#
+(test (run "{call {fun {x} {+ x 1}}}"))
 ;; nullary functions test #2: test SHOULDN'T PASS
 ;; nullary function receives an argument
 (test (run "{call {fun {} 1} 2}")
       => 1)
 ;; nullary functions test #3: test SHOULDN'T PASS
-;; ensure dummy binding name 
-#|(test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
-      => 3)|#
+;; ensure dummy binding name doesn't get overridden
+(test (run "{with {dummy 2} {call {fun {} {+ 1 dummy}}}}")
+      => 3)
