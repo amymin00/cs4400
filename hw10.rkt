@@ -27,8 +27,11 @@
 ;; computes the difference between two numbers: |x-y|
 (define diff
   (lambda (x y)
-    ;; reminder about how our `-` behaves: if y>x, then (- x y) => 0
-    (if (zero? (- y x)) (- x y) (- y x))))
+    (with [y-minus-x (- y x)]
+          ;; reminder about how our `-` behaves: if y>x, then (- x y) => 0
+          (if (zero? y-minus-x)
+              (- x y)
+              y-minus-x))))
 ;; tests
 (test (->nat (diff 0 0)) => '0)
 (test (->nat (diff 3 3)) => '0)
@@ -50,7 +53,9 @@
 ;; appends two lists
 (define/rec append
   (lambda (l1 l2)
-    (if (null? l1) l2 (cons (car l1) (append (cdr l1) l2)))))
+    (if (null? l1)
+        l2
+        (cons (car l1) (append (cdr l1) l2)))))
 ;; tests
 (test (->listof ->nat (append null null)) => '())
 (test (->listof ->nat (append null l123)) => '(1 2 3))
@@ -109,9 +114,10 @@
   (lambda (f l)
     (if (null? l)
         l
-        (if (f (car l))
-            (cons (car l) (filter f (cdr l)))
-            (filter f (cdr l))))))
+        (with [filtered-rest (filter f (cdr l))]
+              (if (f (car l))
+                  (cons (car l) filtered-rest)
+                  filtered-rest)))))
 ;; tests
 (define =3 (= 3))
 (test (->listof ->nat (filter =3 null)) => '())
@@ -135,8 +141,9 @@
 ;; true if x = y or n = 0
 (define threaten?
   (lambda (x y n)
-    (or (or (zero? (diff x y)) (zero? n))
-        (= (diff x y) n))))
+    (with [xy-diff (diff x y)]
+          (or (or (zero? xy-diff) (zero? n))
+              (= xy-diff n)))))
 ;; tests
 ;; if both are at column 1 (ie, the second column), then they always
 ;; threaten each other
@@ -181,9 +188,8 @@
       (cons null null)
       (append* (map (lambda (rest)
                       (map (lambda (safe) (cons safe rest))
-                           (filter
-                            (lambda (x) (safe? x 1 rest))
-                            cols)))
+                           (filter (lambda (col) (safe? col 1 rest))
+                                   cols)))
                     (configurations (sub1 n) cols))))))
 
 ;; No need to test this, since the main `queens' function is a simple
