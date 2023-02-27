@@ -164,7 +164,7 @@
   (lambda (col n cols)
     (or (null? cols)
         (and (not (threaten? col (car cols) n))
-             (safe? col n (cdr cols))))))
+             (safe? col (add1 n) (cdr cols))))))
 ;; tests
 (test (->bool (safe? 5 1 l123)) => '#t)
 (test (->bool (safe? 3 1 l123)) => '#f) ; same column
@@ -182,7 +182,7 @@
       (append* (map (lambda (rest)
                       (map (lambda (safe) (cons safe rest))
                            (filter
-                            (lambda (x) (safe? x (sub1 n) rest))
+                            (lambda (x) (safe? x 1 rest))
                             cols)))
                     (configurations (sub1 n) cols))))))
 
@@ -221,16 +221,16 @@
               (car solutions)))))
 ;; tests
 ;; single solution for a 1x1 board:
-;(test (->listof ->nat (queens 1)) => '(0))
+(test (->listof ->nat (queens 1)) => '(0))
 ;; no solution for 2x2 or 3x3 boards
-;(test (->listof ->nat (queens 2)) => '())
+(test (->listof ->nat (queens 2)) => '())
 (test (->listof ->nat (queens 3)) => '())
 ;; and finally test a few solution (note that these tests depend on
 ;; the specific algorithm since there are many correct solutions, so
 ;; they are *not* good tests)
-;(test (->listof ->nat (queens 4)) => '(2 0 3 1))
-;(test (->listof ->nat (queens 5)) => '(3 1 4 2 0))
-#|
+(test (->listof ->nat (queens 4)) => '(2 0 3 1))
+(test (->listof ->nat (queens 5)) => '(3 1 4 2 0))
+
 ;; 8 : Nat
 ;; define this so you can run the real problem conveniently
 (define 8 (+ 4 4))
@@ -241,4 +241,8 @@
 ;;   (->listof ->nat (queens 8))
 ;; You can also try to see how long it takes to find all solutions by
 ;; making `queens' return the whole list, and use it like this:
-;;   (->listof (->listof ->nat) (queens-all 4))|#
+;;   (->listof (->listof ->nat) (queens-all 4))
+
+(define queens-all
+  (lambda (size)
+    (configurations size (range 0 size))))
