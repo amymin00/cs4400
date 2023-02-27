@@ -242,7 +242,9 @@
 ;; You can also try to see how long it takes to find all solutions by
 ;; making `queens' return the whole list, and use it like this:
 ;;   (->listof (->listof ->nat) (queens-all 4))
-
+#|
 (define queens-all
   (lambda (size)
-    (configurations size (range 0 size))))
+    (configurations size (range 0 size))))|#
+
+(define hours-spent 4)
