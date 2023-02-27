@@ -175,18 +175,17 @@
 ;; this is the core of the solution: finds all valid n-row
 ;; configurations where the queen columns are all taken from the given
 ;; list of input cols
-(define/rec configurations
+(define/rec configurations 
   (lambda (n cols)
     (if (zero? n)
       (cons null null)
       (append* (map (lambda (rest)
                       (map (lambda (safe) (cons safe rest))
                            (filter
-                            (lambda (x) (safe? x n rest))
+                            (lambda (x) (safe? x (sub1 n) rest))
                             cols)))
                     (configurations (sub1 n) cols))))))
-; (configurations 0 '(1 2 4)) --> (cons null null)
-; (configurations 1 '(1 2 4))
+
 ;; No need to test this, since the main `queens' function is a simple
 ;; call to this function.  But to clarify, if you call it with
 ;; (configurations 2 (list 1 2 4)), then the result will be a list of
@@ -225,11 +224,11 @@
 ;(test (->listof ->nat (queens 1)) => '(0))
 ;; no solution for 2x2 or 3x3 boards
 ;(test (->listof ->nat (queens 2)) => '())
-;(test (->listof ->nat (queens 3)) => '())
+(test (->listof ->nat (queens 3)) => '())
 ;; and finally test a few solution (note that these tests depend on
 ;; the specific algorithm since there are many correct solutions, so
 ;; they are *not* good tests)
-(test (->listof ->nat (queens 4)) => '(2 0 3 1))
+;(test (->listof ->nat (queens 4)) => '(2 0 3 1))
 ;(test (->listof ->nat (queens 5)) => '(3 1 4 2 0))
 #|
 ;; 8 : Nat
