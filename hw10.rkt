@@ -27,8 +27,11 @@
 ;; computes the difference between two numbers: |x-y|
 (define diff
   (lambda (x y)
-    ;; reminder about how our `-` behaves: if y>x, then (- x y) => 0
-    (if (zero? (- y x)) (- x y) (- y x))))
+    (with [y-minus-x (- y x)]
+          ;; reminder about how our `-` behaves: if y>x, then (- x y) => 0
+          (if (zero? y-minus-x)
+              (- x y)
+              y-minus-x))))
 ;; tests
 (test (->nat (diff 0 0)) => '0)
 (test (->nat (diff 3 3)) => '0)
@@ -50,7 +53,9 @@
 ;; appends two lists
 (define/rec append
   (lambda (l1 l2)
-    (if (null? l1) l2 (cons (car l1) (append (cdr l1) l2)))))
+    (if (null? l1)
+        l2
+        (cons (car l1) (append (cdr l1) l2)))))
 ;; tests
 (test (->listof ->nat (append null null)) => '())
 (test (->listof ->nat (append null l123)) => '(1 2 3))
@@ -109,9 +114,10 @@
   (lambda (f l)
     (if (null? l)
         l
-        (if (f (car l))
-            (cons (car l) (filter f (cdr l)))
-            (filter f (cdr l))))))
+        (with [filtered-rest (filter f (cdr l))]
+              (if (f (car l))
+                  (cons (car l) filtered-rest)
+                  filtered-rest)))))
 ;; tests
 (define =3 (= 3))
 (test (->listof ->nat (filter =3 null)) => '())
@@ -135,8 +141,9 @@
 ;; true if x = y or n = 0
 (define threaten?
   (lambda (x y n)
-    (or (or (zero? (diff x y)) (zero? n))
-        (= (diff x y) n))))
+    (with [xy-diff (diff x y)]
+          (or (or (zero? xy-diff) (zero? n))
+              (= xy-diff n)))))
 ;; tests
 ;; if both are at column 1 (ie, the second column), then they always
 ;; threaten each other
@@ -164,7 +171,7 @@
   (lambda (col n cols)
     (or (null? cols)
         (and (not (threaten? col (car cols) n))
-             (safe? col n (cdr cols))))))
+             (safe? col (add1 n) (cdr cols))))))
 ;; tests
 (test (->bool (safe? 5 1 l123)) => '#t)
 (test (->bool (safe? 3 1 l123)) => '#f) ; same column
@@ -181,9 +188,8 @@
       (cons null null)
       (append* (map (lambda (rest)
                       (map (lambda (safe) (cons safe rest))
-                           (filter
-                            (lambda (x) (safe? x (sub1 n) rest))
-                            cols)))
+                           (filter (lambda (col) (safe? col 1 rest))
+                                   cols)))
                     (configurations (sub1 n) cols))))))
 
 ;; No need to test this, since the main `queens' function is a simple
@@ -221,16 +227,16 @@
               (car solutions)))))
 ;; tests
 ;; single solution for a 1x1 board:
-;(test (->listof ->nat (queens 1)) => '(0))
+(test (->listof ->nat (queens 1)) => '(0))
 ;; no solution for 2x2 or 3x3 boards
-;(test (->listof ->nat (queens 2)) => '())
+(test (->listof ->nat (queens 2)) => '())
 (test (->listof ->nat (queens 3)) => '())
 ;; and finally test a few solution (note that these tests depend on
 ;; the specific algorithm since there are many correct solutions, so
 ;; they are *not* good tests)
-;(test (->listof ->nat (queens 4)) => '(2 0 3 1))
-;(test (->listof ->nat (queens 5)) => '(3 1 4 2 0))
-#|
+(test (->listof ->nat (queens 4)) => '(2 0 3 1))
+(test (->listof ->nat (queens 5)) => '(3 1 4 2 0))
+
 ;; 8 : Nat
 ;; define this so you can run the real problem conveniently
 (define 8 (+ 4 4))
@@ -241,4 +247,10 @@
 ;;   (->listof ->nat (queens 8))
 ;; You can also try to see how long it takes to find all solutions by
 ;; making `queens' return the whole list, and use it like this:
-;;   (->listof (->listof ->nat) (queens-all 4))|#
+;;   (->listof (->listof ->nat) (queens-all 4))
+#|
+(define queens-all
+  (lambda (size)
+    (configurations size (range 0 size))))|#
+
+(define hours-spent 4)
