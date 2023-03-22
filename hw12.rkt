@@ -1,4 +1,5 @@
 ;; ** The TOY interpreter
+;; test
 
 #lang pl 12
 
@@ -49,13 +50,13 @@
             (error 'parse-sexpr "duplicate `~s' names: ~s"
                    binder names))]
        [else (error 'parse-sexpr "bad `~s' syntax in ~s"
-                   binder sexpr)])]
+                    binder sexpr)])]
     [(cons 'fun more)
      (match sexpr
        [(list 'fun (list (symbol: names) ...) body)
         (if (unique-list? names)
-          (Fun names (parse-sexpr body))
-          (error 'parse-sexpr "duplicate `fun' names: ~s" names))]
+            (Fun names (parse-sexpr body))
+            (error 'parse-sexpr "duplicate `fun' names: ~s" names))]
        [else (error 'parse-sexpr "bad `fun' syntax in ~s" sexpr)])]
     [(cons 'if more)
      (match sexpr
@@ -102,24 +103,27 @@
 (define (extend names values env)
   (raw-extend names (map (inst box VAL) values) env))
 
-
 (: raw-extend : (Listof Symbol) (Listof (Boxof VAL)) ENV -> ENV)
 ;; extends an environment with a new frame, using boxed values.
 (define (raw-extend names boxed-values env)
   (if (= (length names) (length boxed-values))
-    (FrameEnv (map (lambda ([name : Symbol] [val : (Boxof VAL)])
-                     (list name val))
-                   names boxed-values)
-              env)
-    (error 'raw-extend "arity mismatch for names: ~s" names)))
+      (FrameEnv (map (λ ([name : Symbol] [val : (Boxof VAL)])
+                       (list name val))
+                     names boxed-values)
+                env)
+      (error 'raw-extend "arity mismatch for names: ~s" names)))
 
-;;(: extend-rec : (Listof Symbol) (Listof TOY) ENV -> ENV)
+(: extend-rec : (Listof Symbol) (Listof TOY) ENV -> ENV)
 ;; extends an environment with a new recursive frame.
-;;(define (extend-rec names exprs env)
-;;  (for-each (lamdba ([name: Symbol])
-;;                    (let* ([new-cell (box the-bogus-value)]
-;;                           [new-env ()]))
-;;            names))
+(define (extend-rec names exprs env)
+  (let* ([new-cells (map (λ (name : Symbol) the-bogus-value) names)]
+         [new-env (extend names new-cells env)]
+         [values (map (λ (expr : TOY) (eval expr new-env)) exprs)])
+    (for-each (λ ([name : Symbol] [value : VAL])
+                (let ([cell (lookup name env)])
+                  (set-box! new-cell value))
+                names values)
+              new-env)))
 
 (: lookup : Symbol ENV -> (Boxof VAL))
 ;; lookup a symbol in an environment, frame by frame,
@@ -130,8 +134,8 @@
     [(FrameEnv frame rest)
      (let ([cell (assq name frame)])
        (if cell
-         (second cell)
-         (lookup name rest)))]))
+           (second cell)
+           (lookup name rest)))]))
 
 (: unwrap-rktv : VAL -> Any)
 ;; helper for `racket-func->prim-val': unwrap a RktV wrapper in
@@ -150,7 +154,7 @@
 (define (racket-func->prim-val racket-func)
   (define list-func (make-untyped-list-function racket-func))
   (box (PrimV (lambda (args)
-           (RktV (list-func (map unwrap-rktv args)))))))
+                (RktV (list-func (map unwrap-rktv args)))))))
 
 ;; The global environment has a few primitives:
 (: global-environment : ENV)
@@ -181,6 +185,8 @@
     [(Id name) (unbox (lookup name env))]
     [(Bind names exprs bound-body)
      (eval bound-body (extend names (map eval* exprs) env))]
+    [(Bindrec names exprs bound-body)
+     (eval bound-body (extend-rec names exprs env))]
     [(Fun names bound-body)
      (FunV names bound-body env)]
     [(Call fun-expr arg-exprs)
@@ -196,8 +202,8 @@
      (eval* (if (cases (eval* cond-expr)
                   [(RktV v) v] ; Racket value => use as boolean
                   [else #t])   ; other values are always true
-              then-expr
-              else-expr))]
+                then-expr
+                else-expr))]
     [(Set id expr)
      (let ([x (set-box! (lookup id env) (eval expr env))]) the-bogus-value)]))
 
@@ -234,6 +240,13 @@
               {fun {x} {fun {y} {+ x y}}}}
              123}")
       => 124)
+(test (run "{bindrec {{fact {fun {n}
+                              {if {= 0 n}
+                                1
+                                {* n {fact {- n 1}}}}}}}
+              {fact 5}}")
+      => 120)
+;; test for mutually recursive bindrec functions
 
 ;; More tests for complete coverage
 (test (run "{bind x 5 x}")      =error> "bad `bind' syntax")
