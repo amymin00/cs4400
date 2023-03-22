@@ -8,11 +8,11 @@
 #| The BNF:
    <TOY> ::= <num>
            | <id>
-           | { bind {{ <id> <TOY> } ... } <TOY> }
-           | { bindrec {{ <id> <TOY> } ... } <TOY> }
-           | { fun { <id> ... } <TOY> }
+           | { bind {{ <id> <TOY> } ... } <TOY> <TOY> ... }
+           | { bindrec {{ <id> <TOY> } ... } <TOY> <TOY> ... }
+           | { fun { <id> ... } <TOY> <TOY> ... }
            | { if <TOY> <TOY> <TOY> }
-           | { <TOY> <TOY> ... } <-- handles multiple body expressions?
+           | { <TOY> <TOY> ... }
            | { set! <id> <TOY> }
 |#
 
@@ -193,19 +193,19 @@
   (cases expr
     [(Num n)   (RktV n)]
     [(Id name) (unbox (lookup name env))]
-    [(Bind names exprs bound-body)
-     (eval-body bound-body (extend names (map eval* exprs) env))]
-    [(BindRec names exprs bound-body)
-     (eval-body bound-body (extend-rec names exprs env))]
-    [(Fun names bound-body)
-     (FunV names bound-body env)]
+    [(Bind names exprs bound-bodies)
+     (eval-body bound-bodies (extend names (map eval* exprs) env))]
+    [(BindRec names exprs bound-bodies)
+     (eval-body bound-bodies (extend-rec names exprs env))]
+    [(Fun names bound-bodies)
+     (FunV names bound-bodies env)]
     [(Call fun-expr arg-exprs)
      (let ([fval (eval* fun-expr)]
            [arg-vals (map eval* arg-exprs)])
        (cases fval
          [(PrimV proc) (proc arg-vals)]
-         [(FunV names body fun-env)
-          (eval-body body (extend names arg-vals fun-env))]
+         [(FunV names bodies fun-env)
+          (eval-body bodies (extend names arg-vals fun-env))]
          [else (error 'eval "function call with a non-function: ~s"
                       fval)]))]
     [(If cond-expr then-expr else-expr)
@@ -256,7 +256,6 @@
 ;; Tests for set
 (test (run "{set! x 1}")
       =error> "no binding for x")
-
 (test (run "{set! x}")
       =error> "bad `set' syntax")
 (test (run "{bind {{x 1}}
@@ -269,17 +268,45 @@
                         {bind {{y {set! x {if {< x 3} 4 x}}}}
                           x}}}} {f 0}}") => 4)
 
-
 ;; Tests for bindrec
+(test (run "{bindrec x}")
+      =error> "bad `bindrec' syntax")
+(test (run "{bindrec {{x 1}
+                      {x 2}}
+              x}")
+      =error> "duplicate `bindrec' names")
 (test (run "{bindrec {{fact {fun {n}
                               {if {= 0 n}
                                 1
                                 {* n {fact {- n 1}}}}}}}
               {fact 5}}")
       => 120)
-;; TODO: add test for mutually recursive bindrec functions
+;; contrived but simple mutually recursive case
+(test (run "{bindrec {{double {fun {n}
+                                     {if {> n 10}
+                                         n
+                                         {increment {* n 2}}}}}
+                      {increment {fun {n}
+                                     {if {> n 10}
+                                         n
+                                         {double {+ n 1}}}}}}
+             {double 2}}")
+      => 11)
 
-;; Tests for multiple body functions
+;; Tests for multiple body expressions
+;; check it errors when no bodies given
+(test (run "{fun {x}}")
+      =error> "bad `fun' syntax")
+(test (run "{bind {{x 1}}}")
+      =error> "bad `bind' syntax")
+(test (run "{bindrec {{x 1}}}")
+      =error> "bad `bindrec' syntax")
+;; bind with multi-expressions
+(test (run "{bind {{x 1}}
+              {set! x 4}
+              x}") => 4)
+;; TODO: bindrec with multi-expressions
+;; TODO: fun with multi-expressions
 (test (run "{bind {{make-counter
                      {fun {}
                        {bind {{c 0}}
