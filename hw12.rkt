@@ -1,5 +1,4 @@
 ;; ** The TOY interpreter
-;; test
 
 #lang pl 12
 
@@ -116,14 +115,14 @@
 (: extend-rec : (Listof Symbol) (Listof TOY) ENV -> ENV)
 ;; extends an environment with a new recursive frame.
 (define (extend-rec names exprs env)
-  (let* ([new-cells (map (λ (name : Symbol) the-bogus-value) names)]
-         [new-env (extend names new-cells env)]
-         [values (map (λ (expr : TOY) (eval expr new-env)) exprs)])
+  (let* ([bogus-values (map (λ ([name : Symbol]) the-bogus-value) names)]
+         [new-env (extend names bogus-values env)]
+         [values (map (λ ([expr : TOY]) (eval expr new-env)) exprs)])
     (for-each (λ ([name : Symbol] [value : VAL])
-                (let ([cell (lookup name env)])
-                  (set-box! new-cell value))
-                names values)
-              new-env)))
+                (let ([cell (lookup name new-env)])
+                  (set-box! cell value)))
+              names values)
+    new-env))
 
 (: lookup : Symbol ENV -> (Boxof VAL))
 ;; lookup a symbol in an environment, frame by frame,
@@ -185,7 +184,7 @@
     [(Id name) (unbox (lookup name env))]
     [(Bind names exprs bound-body)
      (eval bound-body (extend names (map eval* exprs) env))]
-    [(Bindrec names exprs bound-body)
+    [(BindRec names exprs bound-body)
      (eval bound-body (extend-rec names exprs env))]
     [(Fun names bound-body)
      (FunV names bound-body env)]
@@ -205,7 +204,9 @@
                 then-expr
                 else-expr))]
     [(Set id expr)
-     (let ([x (set-box! (lookup id env) (eval expr env))]) the-bogus-value)]))
+     (let ([x (set-box! (lookup id env)
+                        (eval expr env))])
+       the-bogus-value)]))
 
 (: run : String -> Any)
 ;; evaluate a TOY program contained in a string
@@ -240,13 +241,33 @@
               {fun {x} {fun {y} {+ x y}}}}
              123}")
       => 124)
+
+;; Tests for set
+(test (run "{set! x 1}")
+      =error> "no binding for x")
+(test (run "{bind {{x 1}}
+              {set! x 0}}")
+      =error> "evaluation returned a bad value")
+(test (run "{bind {{f {fun {x}
+                        {bind {{y {set! x {if {< x 3} 4 x}}}}
+                          y}}}}
+              {f 0}}")
+      => 4)
+
+;; Tests for bindrec
 (test (run "{bindrec {{fact {fun {n}
                               {if {= 0 n}
                                 1
                                 {* n {fact {- n 1}}}}}}}
               {fact 5}}")
       => 120)
-;; test for mutually recursive bindrec functions
+;; TODO: add test for mutually recursive bindrec functions
+
+;; Tests for multiple body functions
+;; ...
+
+;; Tests for by-reference function arguments
+;; ...
 
 ;; More tests for complete coverage
 (test (run "{bind x 5 x}")      =error> "bad `bind' syntax")
