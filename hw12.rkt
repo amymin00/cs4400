@@ -71,7 +71,7 @@
             (parse-sexpr then)
             (parse-sexpr else))]
        [else (error 'parse-sexpr "bad `if' syntax in ~s" sexpr)])]
-        [(cons 'set! more)
+    [(cons 'set! more)
      (match sexpr 
        [(list 'set! (symbol: id) expr)
         (Set id (parse-sexpr expr))]
@@ -189,14 +189,14 @@
      (let ([x (eval expr env)]) (eval-body more env))]))
 
 (: get-boxes : (Listof TOY) ENV -> (Listof (Boxof VAL)))
-;; retrieves boxes for arguments passed by reference
+;; retrieves boxes for identifier expressions
 (define (get-boxes arg-exprs env)
   (map (λ ([expr : TOY])
          (cases expr 
            [(Id name) (lookup name env)]
            [else (error 'rfun "received non-identifier: ~s"
-                        expr)])
-         arg-exprs)))
+                        expr)]))
+       arg-exprs))
 
 (: eval : TOY ENV -> VAL)
 ;; evaluates TOY expressions
@@ -216,16 +216,17 @@
     [(RFun names bound-bodies)
      (FunV names bound-bodies env #t)]
     [(Call fun-expr arg-exprs)
-     (let ([fval (eval* fun-expr)]
-           [arg-vals (map eval* arg-exprs)])
+     (let ([fval (eval* fun-expr)])
+       ;; TODO: how to abstract (map eval* arg-exprs)
+       ;; without doin it in rfun case?
        (cases fval
-         [(PrimV proc) (proc arg-vals)]
+         [(PrimV proc) (proc (map eval* arg-exprs))]
          [(FunV names bodies fun-env by-ref?)
           (if by-ref?
               (eval-body bodies (raw-extend names
-                                          (get-boxes arg-exprs env)
-                                          fun-env))
-              (eval-body bodies (extend names arg-vals fun-env)))]
+                                            (get-boxes arg-exprs env)
+                                            fun-env))
+              (eval-body bodies (extend names (map eval* arg-exprs) fun-env)))]
          [else (error 'eval "function call with a non-function: ~s"
                       fval)]))]
     [(If cond-expr then-expr else-expr)
@@ -280,7 +281,7 @@
       =error> "bad `set' syntax")
 (test (run "{bind {{x 1}}
               {set! x 0}}")
-     =error> "evaluation returned a bad value")
+      =error> "evaluation returned a bad value")
 (test (run "{bind {{x 1}}
                       {bind {{y {set! x 4}}}
                          x}}") => 4)
@@ -372,6 +373,13 @@
               {swap! a b}
               {+ a {* 10 b}}}")
       => 12)
+(test (run "{bind {{foo {rfun {f x}
+                          {f {+ x 5} x}}}
+                   {bar {fun {x y}
+                          {+ x y}}}
+                   {val 2}}
+              {foo bar val}}")
+      => 9)
 
 ;; More tests for complete coverage
 (test (run "{bind x 5 x}")      =error> "bad `bind' syntax")
@@ -391,3 +399,5 @@
 (test (run "{fun {x} x}")       =error> "returned a bad value")
 
 ;;; ----------------------------------------------------------------
+
+(define minutes-spent 420)
