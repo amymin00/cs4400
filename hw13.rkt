@@ -117,32 +117,18 @@
 (define (extend names values env)
   (raw-extend names (map (inst box VAL) values) env))
 
-(: extend-rec : (Listof Symbol) (Listof TOY) ENV -> ENV)
+(: extend-rec : (Listof Symbol) (Listof (ENV -> VAL)) ENV -> ENV)
 ;; extends an environment with a new recursive frame (given
-;; expressions).
-;;
-;; (define (extend-rec names exprs env)
-;;   ;; note: no need to check the lengths here, since this is only
-;;   ;; called for `bindrec', and the syntax make it impossible to have
-;;   ;; different lengths
-;;   (let* ([boxes   (map (lambda (x) (box the-bogus-value)) exprs)]
-;;          [new-env (raw-extend names boxes env)])
-;;     (for-each (lambda ([box : (Boxof VAL)] [expr : TOY])
-;;                 (set-box! box (eval expr new-env)))
-;;               boxes exprs)
-;;     new-env))
-;;
-;; Slightly simpler version, as we've seen in class:
-;;
-(define (extend-rec names exprs env)
+;; compiled expressions).
+(define (extend-rec names compiled-exprs env)
   (define new-env
-    (extend names (map (lambda (_) the-bogus-value) exprs) env))
+    (extend names (map (lambda (_) the-bogus-value) compiled-exprs) env))
   ;; note: no need to check the lengths here, since this is only
   ;; called for `bindrec', and the syntax make it impossible to have
   ;; different lengths
-  (for-each (lambda ([name : Symbol] [expr : TOY])
-              (set-box! (lookup name new-env) ((compile expr) new-env)))
-            names exprs)
+  (for-each (lambda ([name : Symbol] [compiled-expr : (ENV -> VAL)])
+              (set-box! (lookup name new-env) (compiled-expr new-env)))
+            names compiled-exprs)
   new-env)
 
 (: lookup : Symbol ENV -> (Boxof VAL))
@@ -193,8 +179,13 @@
 ;;; ==================================================================
 ;;; Evaluation
 
+(: compiler-enabled? : (Boxof Boolean))
+;; a global flag that can disable the compiler
+(define compiler-enabled? (box #f))
+
 (: compile-body : (Listof TOY) -> ENV -> VAL)
-;; evaluates a list of expressions, returns the last value.
+;; compiles a list of expressions, returns the last
+;; compiled expression
 (define (compile-body exprs)
   ;; note: relies on the fact that the body is never empty
   (let ([1st  (compile (first exprs))]
@@ -221,6 +212,8 @@
   (: caller : ENV -> (ENV -> VAL) -> VAL)
   (define (caller env)
     (lambda (compiled) (compiled env)))
+  (unless (unbox compiler-enabled?)
+    (error 'compile "compiler disabled"))
   (cases expr
     [(Num n)   (λ ([env : ENV]) (RktV n))]
     [(Id name) (λ ([env : ENV]) (unbox (lookup name env)))]
@@ -237,9 +230,12 @@
                                 (map (caller env) compiled-exprs)
                                 env))))]
     [(BindRec names exprs bound-body)
-     (let ([compiled-body (compile-body bound-body)])
+     (let ([compiled-body (compile-body bound-body)]
+           [compiled-exprs (map compile exprs)])
+       ;; compile-body returns last compiled expression
+       ;; but extend-rec takes in a list of compiled-expressions
        (λ ([env : ENV])
-         (compiled-body (extend-rec names exprs env))))]
+         (compiled-body (extend-rec names compiled-exprs env))))]
     [(Fun names bound-body)
      (let ([compiled-body (compile-body bound-body)])
        (λ ([env : ENV]) (FunV names compiled-body env #f)))]
@@ -275,13 +271,17 @@
              (compiled-else env))))]))
 
 (: run : String -> Any)
-;; evaluate a TOY program contained in a string
+;; compiles and runs a TOY program contained in a string
 (define (run str)
-  (let ([result ((compile (parse str)) global-environment)])
-    (cases result
-      [(RktV v) v]
-      [else (error 'run "evaluation returned a bad value: ~s"
-                   result)])))
+  (set-box! compiler-enabled? #t)
+  (let ([compiled (compile (parse str))])
+    (set-box! compiler-enabled? #f)
+    (let ([result (compiled global-environment)])
+      (cases result
+        [(RktV v) v]
+        [else (error 'run
+                     "the program returned a bad value: ~s"
+                     result)]))))
 
 ;;; ==================================================================
 ;;; Tests
